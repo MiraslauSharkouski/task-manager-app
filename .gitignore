@@ -1,0 +1,33 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Logs
+/backend/storage/logs/*.log
+/frontend/*.log
+
+# Build outputs
+/backend/public/hot
+/backend/public/storage
+/backend/storage/framework/cache/data/*
+!/backend/storage/framework/cache/data/.gitignore
+
+# Temporary files
+*.tmp
+*.temp
+EOF

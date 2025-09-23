@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Установка Node.js (для Laravel Mix если понадобится)
-RUN curl -sL https://deb.nodesource.com/setup_18.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_22.x | bash -
 RUN apt-get install -y nodejs
 
 # Создание рабочей директории

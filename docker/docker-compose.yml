@@ -1,0 +1,83 @@
+version: "3.8"
+
+services:
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: taskmanager_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ../backend:/var/www/backend
+      - ../frontend/build:/var/www/frontend
+    depends_on:
+      - php
+      - mysql
+    networks:
+      - taskmanager_network
+
+  # PHP-FPM service for Laravel
+  php:
+    build:
+      context: ./php
+      dockerfile: Dockerfile
+    container_name: taskmanager_php
+    volumes:
+      - ../backend:/var/www/backend
+    networks:
+      - taskmanager_network
+    depends_on:
+      - mysql
+    environment:
+      - APP_ENV=local
+
+  # MySQL database
+  mysql:
+    image: mysql:8.0
+    container_name: taskmanager_mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: taskmanager
+      MYSQL_USER: taskmanager_user
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql:/docker-entrypoint-initdb.d
+    networks:
+      - taskmanager_network
+
+  # Node.js service for React development
+  node:
+    image: node:18-alpine
+    container_name: taskmanager_node
+    working_dir: /var/www/frontend
+    volumes:
+      - ../frontend:/var/www/frontend
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    networks:
+      - taskmanager_network
+    command: sh -c "npm install && npm run dev"
+
+  # MailHog for email testing
+  mailhog:
+    image: mailhog/mailhog
+    container_name: taskmanager_mailhog
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - taskmanager_network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  taskmanager_network:
+    driver: bridge

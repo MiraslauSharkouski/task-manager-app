@@ -4,6 +4,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TaskController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+Route::get("/docs-test", [App\Http\Controllers\DocumentationController::class, "index"]);
+
 
 /*
 |--------------------------------------------------------------------------

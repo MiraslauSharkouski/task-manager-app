@@ -2,24 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Resources\UserResource;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
     /**
      * Регистрация нового пользователя
      */
-    public function register(Request \$request)
+    public function register(RegisterRequest \$request): JsonResponse
     {
-        \$request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-
         \$user = User::create([
             'name' => \$request->name,
             'email' => \$request->email,
@@ -31,26 +28,24 @@ class AuthController extends Controller
         return response()->json([
             'access_token' => \$token,
             'token_type' => 'Bearer',
-            'user' => \$user,
+            'user' => new UserResource(\$user),
         ], 201);
     }
 
     /**
      * Аутентификация пользователя
      */
-    public function login(Request \$request)
+    public function login(LoginRequest \$request): JsonResponse
     {
-        \$request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
-
         \$user = User::where('email', \$request->email)->first();
 
         if (! \$user || ! Hash::check(\$request->password, \$user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
+            return response()->json([
+                'message' => 'The provided credentials are incorrect.',
+                'errors' => [
+                    'email' => ['The provided credentials are incorrect.']
+                ]
+            ], 422);
         }
 
         \$token = \$user->createToken('auth-token')->plainTextToken;
@@ -58,14 +53,14 @@ class AuthController extends Controller
         return response()->json([
             'access_token' => \$token,
             'token_type' => 'Bearer',
-            'user' => \$user,
+            'user' => new UserResource(\$user),
         ]);
     }
 
     /**
      * Выход пользователя
      */
-    public function logout(Request \$request)
+    public function logout(Request \$request): JsonResponse
     {
         \$request->user()->currentAccessToken()->delete();
 
@@ -77,8 +72,8 @@ class AuthController extends Controller
     /**
      * Получение данных текущего пользователя
      */
-    public function user(Request \$request)
+    public function user(Request \$request): JsonResponse
     {
-        return response()->json(\$request->user());
+        return response()->json(new UserResource(\$request->user()));
     }
 }

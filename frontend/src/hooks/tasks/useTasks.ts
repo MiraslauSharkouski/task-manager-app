@@ -1,72 +1,100 @@
-import { useState, useEffect } from 'react';
-import { Task, TaskFilters } from '../../types/tasks';
-import api from '../../services/api';
+import { useState, useEffect, useCallback } from 'react';
+import { taskService } from '../../services/api/taskService';
+import { Task, TaskFormData, TaskFilters, TaskApiResponse } from '../../types/tasks';
 
-export const useTasks = (filters?: TaskFilters) => {
+export const useTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<TaskApiResponse['meta'] | null>(null);
+  const [filters, setFilters] = useState<TaskFilters>({});
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        setLoading(true);
-        const params: any = {};
-        if (filters?.status) params.status = filters.status;
-        if (filters?.search) params.search = filters.search;
-
-        const response = await api.get('/tasks', { params });
-        setTasks(response.data.data || []);
-        setError(null);
-      } catch (err) {
-        setError('Failed to fetch tasks');
-        console.error('Error fetching tasks:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTasks();
+  const fetchTasks = useCallback(async (page: number = 1) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await taskService.getAll(page, filters);
+      setTasks(response.data);
+      setPagination(response.meta);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to fetch tasks';
+      setError(errorMessage);
+      console.error('Fetch tasks error:', err);
+    } finally {
+      setLoading(false);
+    }
   }, [filters]);
 
-  const createTask = async (taskData: any) => {
+  const createTask = async (taskData: TaskFormData): Promise<Task> => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      const response = await api.post('/tasks', taskData);
-      setTasks(prev => [...prev, response.data.data]);
-      return response.data.data;
-    } catch (err) {
-      setError('Failed to create task');
+      const newTask = await taskService.create(taskData);
+      setTasks(prev => [newTask, ...prev]);
+      return newTask;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to create task';
+      setError(errorMessage);
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const updateTask = async (id: number, taskData: any) => {
+  const updateTask = async (id: number, taskData: TaskFormData): Promise<Task> => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      const response = await api.put(`/tasks/${id}`, taskData);
-      setTasks(prev => prev.map(task => task.id === id ? response.data.data : task));
-      return response.data.data;
-    } catch (err) {
-      setError('Failed to update task');
+      const updatedTask = await taskService.update(id, taskData);
+      setTasks(prev => prev.map(task => task.id === id ? updatedTask : task));
+      return updatedTask;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to update task';
+      setError(errorMessage);
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const deleteTask = async (id: number) => {
+  const deleteTask = async (id: number): Promise<void> => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      await api.delete(`/tasks/${id}`);
+      await taskService.delete(id);
       setTasks(prev => prev.filter(task => task.id !== id));
-    } catch (err) {
-      setError('Failed to delete task');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to delete task';
+      setError(errorMessage);
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
+
+  const setTaskFilters = (newFilters: TaskFilters) => {
+    setFilters(newFilters);
+  };
+
+  // Fetch tasks when filters change
+  useEffect(() => {
+    fetchTasks(1);
+  }, [fetchTasks]);
 
   return {
     tasks,
     loading,
     error,
+    pagination,
+    filters,
+    fetchTasks,
     createTask,
     updateTask,
     deleteTask,
+    setTaskFilters,
   };
 };

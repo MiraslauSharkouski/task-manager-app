@@ -1,5 +1,3 @@
-import { User } from './auth';
-
 export type TaskStatus = 'pending' | 'in_progress' | 'done';
 
 export interface Task {
@@ -10,7 +8,13 @@ export interface Task {
   status: TaskStatus;
   created_at: string;
   updated_at: string;
-  user: User;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    created_at: string;
+    updated_at: string;
+  };
 }
 
 export interface TaskFormData {
@@ -24,7 +28,16 @@ export interface TaskFilters {
   search?: string;
 }
 
-export interface TaskResponse {
+export interface TaskPagination {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number;
+  to: number;
+}
+
+export interface TaskApiResponse {
   data: Task[];
   links: {
     first: string;
@@ -32,18 +45,13 @@ export interface TaskResponse {
     prev: string | null;
     next: string | null;
   };
-  meta: {
-    current_page: number;
-    from: number;
-    last_page: number;
-    links: Array<{
-      url: string | null;
-      label: string;
-      active: boolean;
-    }>;
-    path: string;
-    per_page: number;
-    to: number;
-    total: number;
-  };
+  meta: TaskPagination;
+}
+
+export interface TaskState {
+  tasks: Task[];
+  loading: boolean;
+  error: string | null;
+  pagination: TaskPagination | null;
+  filters: TaskFilters;
 }

@@ -108,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (data: RegisterData) => {
+  const register = async ( RegisterData) => {
     dispatch({ type: 'AUTH_START' });
     try {
       const response = await authService.register(data);

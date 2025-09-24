@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTasks } from '../../hooks/tasks/useTasks';
 import TaskList from '../../components/tasks/TaskList';
@@ -15,14 +15,20 @@ const TaskListPage: React.FC = () => {
     createTask,
     updateTask,
     deleteTask,
+    isCreating,
+    isUpdating,
+    isDeleting,
+    createError,
+    updateError,
+    deleteError,
   } = useTasks();
   
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Auto-hide success message after 3 seconds
+  // Автоматическое скрытие сообщений успеха
+  React.useEffect(() => {
     if (successMessage) {
       const timer = setTimeout(() => {
         setSuccessMessage(null);
@@ -77,7 +83,8 @@ const TaskListPage: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
         <button
           onClick={handleCreateTask}
-          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          disabled={isCreating}
+          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
         >
           <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
@@ -90,6 +97,30 @@ const TaskListPage: React.FC = () => {
       {successMessage && (
         <div className="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
           <span className="block sm:inline">{successMessage}</span>
+        </div>
+      )}
+
+      {/* Loading States */}
+      {(isCreating || isUpdating || isDeleting) && (
+        <div className="mb-4 bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative" role="alert">
+          <span className="block sm:inline">Processing...</span>
+        </div>
+      )}
+
+      {/* Error Messages */}
+      {createError && (
+        <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <span className="block sm:inline">Error creating task: {createError}</span>
+        </div>
+      )}
+      {updateError && (
+        <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <span className="block sm:inline">Error updating task: {updateError}</span>
+        </div>
+      )}
+      {deleteError && (
+        <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <span className="block sm:inline">Error deleting task: {deleteError}</span>
         </div>
       )}
 

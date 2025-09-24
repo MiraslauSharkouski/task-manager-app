@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Task } from '../../types/tasks';
 import { formatDate, getStatusColor, getStatusText } from '../../utils';
-import TaskModal from './TaskModal';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 interface TaskListProps {

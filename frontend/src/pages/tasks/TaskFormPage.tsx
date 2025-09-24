@@ -13,23 +13,17 @@ const TaskFormPage: React.FC = () => {
     error,
     createTask,
     updateTask,
-    fetchTasks,
+    isCreating,
+    isUpdating,
+    createError,
+    updateError,
   } = useTasks();
   
-  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const editingTask = id ? tasks.find(task => task.id === parseInt(id)) : undefined;
 
-  useEffect(() => {
-    if (id) {
-      // Fetch specific task if editing
-      fetchTasks(1);
-    }
-  }, [id, fetchTasks]);
-
   const handleSubmit = async (taskData: TaskFormData) => {
-    setSubmitting(true);
     setSubmitError(null);
     
     try {
@@ -43,8 +37,6 @@ const TaskFormPage: React.FC = () => {
       const errorMessage = err.response?.data?.message || 'Failed to save task';
       setSubmitError(errorMessage);
       throw err;
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -68,12 +60,21 @@ const TaskFormPage: React.FC = () => {
         </h1>
       </div>
       
+      {/* Submit Errors */}
+      {(submitError || createError || updateError) && (
+        <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <span className="block sm:inline">
+            {submitError || createError || updateError}
+          </span>
+        </div>
+      )}
+
       <TaskForm
         task={editingTask}
         onSubmit={handleSubmit}
         onCancel={handleCancel}
-        loading={submitting}
-        error={submitError}
+        loading={isCreating || isUpdating}
+        error={null}
       />
     </div>
   );

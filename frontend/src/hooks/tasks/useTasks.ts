@@ -1,100 +1,63 @@
-import { useState, useEffect, useCallback } from 'react';
-import { taskService } from '../../services/api/taskService';
-import { Task, TaskFormData, TaskFilters, TaskApiResponse } from '../../types/tasks';
+import { useState, useCallback } from 'react';
+import { useTasksQuery, useCreateTaskMutation, useUpdateTaskMutation, useDeleteTaskMutation } from './useTaskQueries';
+import { TaskFilters, TaskFormData } from '../../types/tasks';
 
 export const useTasks = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState<TaskApiResponse['meta'] | null>(null);
+  const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<TaskFilters>({});
+  
+  // Используем React Query для получения задач
+  const { 
+    data: tasksData, 
+    isLoading, 
+    isError, 
+    error 
+  } = useTasksQuery(page, filters);
+  
+  // Мутации для CRUD операций
+  const createTaskMutation = useCreateTaskMutation();
+  const updateTaskMutation = useUpdateTaskMutation();
+  const deleteTaskMutation = useDeleteTaskMutation();
 
-  const fetchTasks = useCallback(async (page: number = 1) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await taskService.getAll(page, filters);
-      setTasks(response.data);
-      setPagination(response.meta);
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Failed to fetch tasks';
-      setError(errorMessage);
-      console.error('Fetch tasks error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [filters]);
+  const fetchTasks = useCallback((newPage: number = 1) => {
+    setPage(newPage);
+  }, []);
 
-  const createTask = async (taskData: TaskFormData): Promise<Task> => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const newTask = await taskService.create(taskData);
-      setTasks(prev => [newTask, ...prev]);
-      return newTask;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Failed to create task';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateTask = async (id: number, taskData: TaskFormData): Promise<Task> => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const updatedTask = await taskService.update(id, taskData);
-      setTasks(prev => prev.map(task => task.id === id ? updatedTask : task));
-      return updatedTask;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Failed to update task';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const deleteTask = async (id: number): Promise<void> => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      await taskService.delete(id);
-      setTasks(prev => prev.filter(task => task.id !== id));
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Failed to delete task';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const setTaskFilters = (newFilters: TaskFilters) => {
+  const setTaskFilters = useCallback((newFilters: TaskFilters) => {
     setFilters(newFilters);
+    setPage(1); // Сбрасываем на первую страницу при изменении фильтров
+  }, []);
+
+  const createTask = async (taskData: TaskFormData) => {
+    return createTaskMutation.mutateAsync(taskData);
   };
 
-  // Fetch tasks when filters change
-  useEffect(() => {
-    fetchTasks(1);
-  }, [fetchTasks]);
+  const updateTask = async (id: number, taskData: TaskFormData) => {
+    return updateTaskMutation.mutateAsync({ id, taskData });
+  };
+
+  const deleteTask = async (id: number) => {
+    return deleteTaskMutation.mutateAsync(id);
+  };
 
   return {
-    tasks,
-    loading,
-    error,
-    pagination,
+    tasks: tasksData?.data || [],
+    pagination: tasksData?.meta || null,
+    loading: isLoading,
+    error: isError ? (error as Error)?.message || 'Failed to load tasks' : null,
     filters,
+    page,
     fetchTasks,
+    setTaskFilters,
     createTask,
     updateTask,
     deleteTask,
-    setTaskFilters,
+    // Состояния мутаций
+    isCreating: createTaskMutation.isLoading,
+    isUpdating: updateTaskMutation.isLoading,
+    isDeleting: deleteTaskMutation.isLoading,
+    createError: createTaskMutation.isError ? (createTaskMutation.error as Error)?.message : null,
+    updateError: updateTaskMutation.isError ? (updateTaskMutation.error as Error)?.message : null,
+    deleteError: deleteTaskMutation.isError ? (deleteTaskMutation.error as Error)?.message : null,
   };
 };

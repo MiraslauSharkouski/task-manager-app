@@ -42,7 +42,11 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/" element={<TaskListPage />} />
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <TaskListPage />
+                </ProtectedRoute>
+              } />
             </Routes>
           </main>
         </div>

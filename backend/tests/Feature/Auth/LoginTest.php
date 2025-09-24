@@ -13,17 +13,17 @@ class LoginTest extends TestCase
 
     public function test_user_can_login_with_correct_credentials(): void
     {
-        \$user = User::factory()->create([
+        $user = User::factory()->create([
             'email' => 'test@example.com',
             'password' => Hash::make('password123'),
         ]);
 
-        \$response = \$this->postJson('/api/login', [
+        $response = $this->postJson('/api/login', [
             'email' => 'test@example.com',
             'password' => 'password123',
         ]);
 
-        \$response->assertStatus(200)
+        $response->assertStatus(200)
             ->assertJsonStructure([
                 'access_token',
                 'token_type',
@@ -39,17 +39,17 @@ class LoginTest extends TestCase
 
     public function test_user_cannot_login_with_incorrect_credentials(): void
     {
-        \$user = User::factory()->create([
+        $user = User::factory()->create([
             'email' => 'test@example.com',
             'password' => Hash::make('password123'),
         ]);
 
-        \$response = \$this->postJson('/api/login', [
+        $response = $this->postJson('/api/login', [
             'email' => 'test@example.com',
             'password' => 'wrongpassword',
         ]);
 
-        \$response->assertStatus(422)
+        $response->assertStatus(422)
             ->assertJsonStructure([
                 'message',
                 'errors',

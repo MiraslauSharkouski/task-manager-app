@@ -9,250 +9,147 @@ use App\Http\Resources\TaskResource;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class TaskController extends Controller
 {
     /**
-     * Get all tasks for the authenticated user
-     * 
-     * @group Tasks
-     * 
-     * @authenticated
-     * 
-     * @queryParam page integer Page number for pagination. Example: 1
-     * 
-     * @response 200 {
-     *   "data": [
-     *     {
-     *       "id": 1,
-     *       "user_id": 1,
-     *       "title": "Sample Task",
-     *       "description": "This is a sample task",
-     *       "status": "pending",
-     *       "created_at": "2023-01-01T00:00:00.000000Z",
-     *       "updated_at": "2023-01-01T00:00:00.000000Z",
-     *       "user": {
-     *         "id": 1,
-     *         "name": "John Doe",
-     *         "email": "john@example.com",
-     *         "created_at": "2023-01-01T00:00:00.000000Z",
-     *         "updated_at": "2023-01-01T00:00:00.000000Z"
-     *       }
-     *     }
-     *   ],
-     *   "links": {
-     *     "self": "http://localhost/api/tasks"
-     *   },
-     *   "meta": {
-     *     "total": 1,
-     *     "per_page": 15,
-     *     "current_page": 1,
-     *     "last_page": 1,
-     *     "from": 1,
-     *     "to": 1,
-     *     "api_version": "v1",
-     *     "timestamp": "2023-01-01T00:00:00.000000Z"
-     *   }
-     * }
-     * 
-     * @param Request $request
-     * @return JsonResponse
+     * Display a listing of the resource.
      */
     public function index(Request $request): JsonResponse
     {
-        $tasks = $request->user()
-            ->tasks()
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
+        try {
+            $tasks = $request->user()
+                ->tasks()
+                ->orderBy('created_at', 'desc')
+                ->paginate(15);
 
-        return (new TaskCollection($tasks))->response();
+            return (new TaskCollection($tasks))->response();
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch tasks', [
+                'user_id' => $request->user()?->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to fetch tasks',
+                'error' => 'Internal server error'
+            ], 500);
+        }
     }
 
     /**
-     * Create a new task
-     * 
-     * @group Tasks
-     * 
-     * @authenticated
-     * 
-     * @bodyParam title string required The title of the task. Example: New Task
-     * @bodyParam description string The description of the task. Example: This is a new task
-     * @bodyParam status string The status of the task. Must be one of: pending, in_progress, done. Default: pending. Example: pending
-     * 
-     * @response 201 {
-     *   "data": {
-     *     "id": 1,
-     *     "user_id": 1,
-     *     "title": "New Task",
-     *     "description": "This is a new task",
-     *     "status": "pending",
-     *     "created_at": "2023-01-01T00:00:00.000000Z",
-     *     "updated_at": "2023-01-01T00:00:00.000000Z",
-     *     "user": {
-     *       "id": 1,
-     *       "name": "John Doe",
-     *       "email": "john@example.com",
-     *       "created_at": "2023-01-01T00:00:00.000000Z",
-     *       "updated_at": "2023-01-01T00:00:00.000000Z"
-     *     }
-     *   },
-     *   "meta": {
-     *     "api_version": "v1",
-     *     "timestamp": "2023-01-01T00:00:00.000000Z"
-     *   }
-     * }
-     * 
-     * @param StoreTaskRequest $request
-     * @return JsonResponse
+     * Store a newly created resource in storage.
      */
     public function store(StoreTaskRequest $request): JsonResponse
     {
-        $task = $request->user()->tasks()->create([
-            'title' => $request->title,
-            'description' => $request->description,
-            'status' => $request->status ?? 'pending',
-        ]);
+        try {
+            $task = $request->user()->tasks()->create([
+                'title' => $request->title,
+                'description' => $request->description,
+                'status' => $request->status ?? 'pending',
+            ]);
 
-        return (new TaskResource($task))->response()->setStatusCode(201);
+            return (new TaskResource($task))->response()->setStatusCode(201);
+        } catch (\Exception $e) {
+            Log::error('Failed to create task', [
+                'user_id' => $request->user()->id,
+                'input' => $request->validated(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to create task',
+                'error' => 'Internal server error'
+            ], 500);
+        }
     }
 
     /**
-     * Get a specific task
-     * 
-     * @group Tasks
-     * 
-     * @authenticated
-     * 
-     * @urlParam id integer required The ID of the task. Example: 1
-     * 
-     * @response 200 {
-     *   "data": {
-     *     "id": 1,
-     *     "user_id": 1,
-     *     "title": "Sample Task",
-     *     "description": "This is a sample task",
-     *     "status": "pending",
-     *     "created_at": "2023-01-01T00:00:00.000000Z",
-     *     "updated_at": "2023-01-01T00:00:00.000000Z",
-     *     "user": {
-     *       "id": 1,
-     *       "name": "John Doe",
-     *       "email": "john@example.com",
-     *       "created_at": "2023-01-01T00:00:00.000000Z",
-     *       "updated_at": "2023-01-01T00:00:00.000000Z"
-     *     }
-     *   },
-     *   "meta": {
-     *     "api_version": "v1",
-     *     "timestamp": "2023-01-01T00:00:00.000000Z"
-     *   }
-     * }
-     * 
-     * @response 403 {
-     *   "message": "This action is unauthorized."
-     * }
-     * 
-     * @param Task $task
-     * @param Request $request
-     * @return JsonResponse
+     * Display the specified resource.
      */
     public function show(Task $task, Request $request): JsonResponse
     {
-        // Проверяем, что задача принадлежит пользователю
-        $this->authorizeUserTask($request->user(), $task);
+        try {
+            // Проверяем, что задача принадлежит пользователю
+            $this->authorizeUserTask($request->user(), $task);
 
-        return (new TaskResource($task))->response();
+            return (new TaskResource($task))->response();
+        } catch (\Exception $e) {
+            Log::error('Failed to show task', [
+                'user_id' => $request->user()?->id,
+                'task_id' => $task->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to show task',
+                'error' => 'Internal server error'
+            ], 500);
+        }
     }
 
     /**
-     * Update a specific task
-     * 
-     * @group Tasks
-     * 
-     * @authenticated
-     * 
-     * @urlParam id integer required The ID of the task. Example: 1
-     * 
-     * @bodyParam title string The title of the task. Example: Updated Task Title
-     * @bodyParam description string The description of the task. Example: This is an updated task
-     * @bodyParam status string The status of the task. Must be one of: pending, in_progress, done. Example: in_progress
-     * 
-     * @response 200 {
-     *   "data": {
-     *     "id": 1,
-     *     "user_id": 1,
-     *     "title": "Updated Task Title",
-     *     "description": "This is an updated task",
-     *     "status": "in_progress",
-     *     "created_at": "2023-01-01T00:00:00.000000Z",
-     *     "updated_at": "2023-01-01T00:00:00.000000Z",
-     *     "user": {
-     *       "id": 1,
-     *       "name": "John Doe",
-     *       "email": "john@example.com",
-     *       "created_at": "2023-01-01T00:00:00.000000Z",
-     *       "updated_at": "2023-01-01T00:00:00.000000Z"
-     *     }
-     *   },
-     *   "meta": {
-     *     "api_version": "v1",
-     *     "timestamp": "2023-01-01T00:00:00.000000Z"
-     *   }
-     * }
-     * 
-     * @response 403 {
-     *   "message": "This action is unauthorized."
-     * }
-     * 
-     * @param UpdateTaskRequest $request
-     * @param Task $task
-     * @return JsonResponse
+     * Update the specified resource in storage.
      */
     public function update(UpdateTaskRequest $request, Task $task): JsonResponse
     {
-        // Проверяем, что задача принадлежит пользователю
-        $this->authorizeUserTask($request->user(), $task);
+        try {
+            // UpdateTaskRequest уже проверяет авторизацию
+            
+            $task->update([
+                'title' => $request->title ?? $task->title,
+                'description' => $request->description ?? $task->description,
+                'status' => $request->status ?? $task->status,
+            ]);
 
-        $task->update([
-            'title' => $request->title ?? $task->title,
-            'description' => $request->description ?? $task->description,
-            'status' => $request->status ?? $task->status,
-        ]);
-
-        return (new TaskResource($task))->response();
+            return (new TaskResource($task))->response();
+        } catch (\Exception $e) {
+            Log::error('Failed to update task', [
+                'user_id' => $request->user()->id,
+                'task_id' => $task->id,
+                'input' => $request->validated(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to update task',
+                'error' => 'Internal server error'
+            ], 500);
+        }
     }
 
     /**
-     * Delete a specific task
-     * 
-     * @group Tasks
-     * 
-     * @authenticated
-     * 
-     * @urlParam id integer required The ID of the task. Example: 1
-     * 
-     * @response 200 {
-     *   "message": "Task deleted successfully"
-     * }
-     * 
-     * @response 403 {
-     *   "message": "This action is unauthorized."
-     * }
-     * 
-     * @param Task $task
-     * @param Request $request
-     * @return JsonResponse
+     * Remove the specified resource from storage.
      */
     public function destroy(Task $task, Request $request): JsonResponse
     {
-        // Проверяем, что задача принадлежит пользователю
-        $this->authorizeUserTask($request->user(), $task);
+        try {
+            // Проверяем, что задача принадлежит пользователю
+            $this->authorizeUserTask($request->user(), $task);
 
-        $task->delete();
+            $task->delete();
 
-        return response()->json([
-            'message' => 'Task deleted successfully'
-        ]);
+            return response()->json([
+                'message' => 'Task deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to delete task', [
+                'user_id' => $request->user()?->id,
+                'task_id' => $task->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to delete task',
+                'error' => 'Internal server error'
+            ], 500);
+        }
     }
 
     /**
@@ -261,6 +158,12 @@ class TaskController extends Controller
     private function authorizeUserTask($user, Task $task): void
     {
         if ($user->id !== $task->user_id) {
+            Log::warning('Unauthorized access attempt', [
+                'user_id' => $user->id,
+                'task_id' => $task->id,
+                'task_owner_id' => $task->user_id,
+            ]);
+            
             abort(403, 'This action is unauthorized.');
         }
     }

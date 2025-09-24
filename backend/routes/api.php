@@ -4,8 +4,6 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TaskController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-Route::get("/docs-test", [App\Http\Controllers\DocumentationController::class, "index"]);
-
 
 /*
 |--------------------------------------------------------------------------
@@ -18,12 +16,14 @@ Route::get("/docs-test", [App\Http\Controllers\DocumentationController::class, "
 |
 */
 
-// Аутентификация
-Route::post('/register', [AuthController::class, 'register'])->name('api.register');
-Route::post('/login', [AuthController::class, 'login'])->name('api.login');
+// Аутентификация с ограничением по rate limiting
+Route::middleware(['throttle:global'])->group(function () {
+    Route::post('/register', [AuthController::class, 'register'])->name('api.register');
+    Route::post('/login', [AuthController::class, 'login'])->name('api.login');
+});
 
-// Защищенные маршруты
-Route::middleware('auth:sanctum')->group(function () {
+// Защищенные маршруты с rate limiting
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('api.logout');
     Route::get('/user', [AuthController::class, 'user'])->name('api.user');
     

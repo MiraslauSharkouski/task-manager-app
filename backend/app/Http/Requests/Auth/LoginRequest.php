@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Password;
 
 class LoginRequest extends FormRequest
 {
@@ -22,8 +23,18 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => 'required|email',
-            'password' => 'required|string',
+            'email' => [
+                'required',
+                'string',
+                'email:rfc,dns,spoof',
+                'max:255',
+                'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+            ],
+            'password' => [
+                'required',
+                'string',
+                'max:255',
+            ],
         ];
     }
 
@@ -35,7 +46,20 @@ class LoginRequest extends FormRequest
         return [
             'email.required' => 'Email обязателен для заполнения.',
             'email.email' => 'Email должен быть действительным адресом электронной почты.',
+            'email.max' => 'Email не может превышать :max символов.',
+            'email.regex' => 'Email имеет недопустимый формат.',
             'password.required' => 'Пароль обязателен для заполнения.',
+            'password.max' => 'Пароль не может превышать :max символов.',
         ];
+    }
+
+    /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'email' => strtolower(trim(strip_tags($this->email))),
+        ]);
     }
 }

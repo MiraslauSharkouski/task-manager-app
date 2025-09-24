@@ -29,6 +29,7 @@ export interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
+  error: string | null;
 }
 
 export interface AuthContextType {
@@ -37,4 +38,5 @@ export interface AuthContextType {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  clearError: () => void;
 }

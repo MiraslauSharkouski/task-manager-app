@@ -2,23 +2,42 @@ import api from './api';
 import { LoginCredentials, RegisterData, AuthResponse } from '../../types/auth';
 
 export const authService = {
-  register: async (data: RegisterData) => {
-    const response = await api.post('/register', data);
-    return response.data as AuthResponse;
+  register: async (data: RegisterData): Promise<AuthResponse> => {
+    try {
+      const response = await api.post<AuthResponse>('/register', data);
+      return response.data;
+    } catch (error) {
+      console.error('Register error:', error);
+      throw error;
+    }
   },
 
-  login: async (credentials: LoginCredentials) => {
-    const response = await api.post('/login', credentials);
-    return response.data as AuthResponse;
+  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
+    try {
+      const response = await api.post<AuthResponse>('/login', credentials);
+      return response.data;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   },
 
-  logout: async () => {
-    await api.post('/logout');
-    localStorage.removeItem('auth_token');
+  logout: async (): Promise<void> => {
+    try {
+      await api.post('/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
   },
 
   getCurrentUser: async () => {
-    const response = await api.get('/user');
-    return response.data;
+    try {
+      const response = await api.get('/user');
+      return response.data;
+    } catch (error) {
+      console.error('Get current user error:', error);
+      throw error;
+    }
   },
 };

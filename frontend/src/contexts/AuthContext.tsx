@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { AuthState, AuthContextType, LoginCredentials, RegisterData } from '../types/auth';
-import api from '../services/api';
+import { authService } from '../services/api/authService';
 
 interface AuthAction {
   type: string;
@@ -9,15 +9,16 @@ interface AuthAction {
 
 const initialState: AuthState = {
   user: null,
-  token: null,
-  isAuthenticated: false,
+  token: localStorage.getItem('auth_token'),
+  isAuthenticated: !!localStorage.getItem('auth_token'),
   loading: true,
+  error: null,
 };
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
     case 'AUTH_START':
-      return { ...state, loading: true };
+      return { ...state, loading: true, error: null };
     case 'AUTH_SUCCESS':
       return {
         ...state,
@@ -25,13 +26,32 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         token: action.payload.token,
         isAuthenticated: true,
         loading: false,
+        error: null,
       };
     case 'AUTH_FAIL':
-      return { ...state, loading: false };
-    case 'LOGOUT':
-      return { ...state, user: null, token: null, isAuthenticated: false };
+      return { 
+        ...state, 
+        loading: false, 
+        error: action.payload || 'Authentication failed' 
+      };
+    case 'AUTH_LOGOUT':
+      return { 
+        ...state, 
+        user: null, 
+        token: null, 
+        isAuthenticated: false, 
+        loading: false,
+        error: null 
+      };
+    case 'CLEAR_ERROR':
+      return { ...state, error: null };
     case 'SET_USER':
-      return { ...state, user: action.payload, loading: false };
+      return { 
+        ...state, 
+        user: action.payload, 
+        loading: false,
+        isAuthenticated: true 
+      };
     default:
       return state;
   }
@@ -43,38 +63,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      // Проверяем валидность токена, получая данные пользователя
-      api.get('/user')
-        .then((response) => {
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        try {
+          const user = await authService.getCurrentUser();
           dispatch({
-            type: 'AUTH_SUCCESS',
-            payload: { user: response.data, token },
+            type: 'SET_USER',
+            payload: user,
           });
-        })
-        .catch(() => {
+        } catch (error) {
           localStorage.removeItem('auth_token');
-          dispatch({ type: 'AUTH_FAIL' });
-        });
-    } else {
-      dispatch({ type: 'AUTH_FAIL' });
-    }
+          dispatch({ type: 'AUTH_LOGOUT' });
+        }
+      } else {
+        dispatch({ type: 'AUTH_FAIL' });
+      }
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (credentials: LoginCredentials) => {
     dispatch({ type: 'AUTH_START' });
     try {
-      const response = await api.post('/login', credentials);
-      const { access_token, user } = response.data;
-
-      localStorage.setItem('auth_token', access_token);
+      const response = await authService.login(credentials);
+      
+      localStorage.setItem('auth_token', response.access_token);
+      
       dispatch({
         type: 'AUTH_SUCCESS',
-        payload: { user, token: access_token },
+        payload: { 
+          user: response.user, 
+          token: response.access_token 
+        },
       });
-    } catch (error) {
-      dispatch({ type: 'AUTH_FAIL' });
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Login failed';
+      dispatch({ 
+        type: 'AUTH_FAIL', 
+        payload: errorMessage 
+      });
       throw error;
     }
   };
@@ -82,38 +111,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (data: RegisterData) => {
     dispatch({ type: 'AUTH_START' });
     try {
-      const response = await api.post('/register', data);
-      const { access_token, user } = response.data;
-
-      localStorage.setItem('auth_token', access_token);
+      const response = await authService.register(data);
+      
+      localStorage.setItem('auth_token', response.access_token);
+      
       dispatch({
         type: 'AUTH_SUCCESS',
-        payload: { user, token: access_token },
+        payload: { 
+          user: response.user, 
+          token: response.access_token 
+        },
       });
-    } catch (error) {
-      dispatch({ type: 'AUTH_FAIL' });
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Registration failed';
+      dispatch({ 
+        type: 'AUTH_FAIL', 
+        payload: errorMessage 
+      });
       throw error;
     }
   };
 
   const logout = async () => {
     try {
-      await api.post('/logout');
+      await authService.logout();
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
       localStorage.removeItem('auth_token');
-      dispatch({ type: 'LOGOUT' });
+      dispatch({ type: 'AUTH_LOGOUT' });
     }
   };
 
   const refreshUser = async () => {
     try {
-      const response = await api.get('/user');
-      dispatch({ type: 'SET_USER', payload: response.data });
+      const user = await authService.getCurrentUser();
+      dispatch({ type: 'SET_USER', payload: user });
     } catch (error) {
       console.error('Refresh user error:', error);
+      await logout();
     }
+  };
+
+  const clearError = () => {
+    dispatch({ type: 'CLEAR_ERROR' });
   };
 
   const value = {
@@ -122,6 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register,
     logout,
     refreshUser,
+    clearError,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -17,7 +17,17 @@ class TaskCollection extends ResourceCollection
         return [
             'data' => $this->collection,
             'links' => [
-                'self' => 'link-value',
+                'self' => $request->url(),
+            ],
+            'meta' => [
+                'total' => $this->total(),
+                'per_page' => $this->perPage(),
+                'current_page' => $this->currentPage(),
+                'last_page' => $this->lastPage(),
+                'from' => $this->firstItem(),
+                'to' => $this->lastItem(),
+                'api_version' => 'v1',
+                'timestamp' => now()->toISOString(),
             ],
         ];
     }
